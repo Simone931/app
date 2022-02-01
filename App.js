@@ -1,112 +1,121 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
-
-import React from 'react';
-import type {Node} from 'react';
+import 'react-native-gesture-handler';
+import React, { Component } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   useColorScheme,
   View,
+  AppState
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Toast, Container, NativeBaseProvider } from 'native-base';
+import CommonColor from './src/constants/colors';
+import Store from './src/resources/store';
+import { PersistGate } from 'redux-persist/integration/react';
+import Navigator from './src/resources/navigator';
+import emitter from './src/app/common/toaster';
+import { Provider } from 'react-redux';
+import RNBootSplash from "react-native-bootsplash";
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+console.disableYellowBox = true;
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+class App extends Component {
 
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+  constructor(props) {
+    super(props)
+    this.state = {
+      isReady: false,
+      appState: AppState.currentState,
+    }
+    this.store = Store()
+  }
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  // App event
+  componentDidMount() {
+    this.store.persistor.dispatch({ type: 'REHYDRATE' });
+
+    this._load();
+    emitter.on("showToast", this.showToast);
+    AppState.addEventListener('change', this._handleAppStateChange);
+    RNBootSplash.hide({ fade: true });
+  }
+
+  componentWillUnmount() {
+    emitter.off("showToast", this.showToast);
+    AppState.removeEventListener('change', this._handleAppStateChange);
+  }
+
+  // Handler
+  _handleAppStateChange = nextAppState => {
+    if (this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
+      console.log('App has come to the foreground!');
+    }
+    this.setState({ appState: nextAppState });
   };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
+  _handleConnectivityChange = isConnected => {
+    if (isConnected) {
+      console.log({ isConnected });
+    } else {
+      console.log({ isConnected });
+    }
+  };
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+  // Load
+  _load = async () => {
+    await this._loadFonts();
+    await this._loadAccessToken();
+    this.setState({ isReady: true });
+  }
+
+  _loadFonts = async () => {
+
+  }
+
+  _loadAccessToken = async () => {
+
+  }
+
+  // Global functions
+  showToast = params => {
+    Toast.show({
+      text: params.message,
+      type: params.type || 'success',
+      duration: 2500,
+      position: 'bottom',
+      textStyle: { textAlign: 'center', fontFamily: 'SourceSansPro' },
+      buttonTextStyle: { fontFamily: 'SourceSansPro' },
+      buttonText: 'Ok',
+    })
+  }
+
+  // Render app
+  render () {
+    return (
+      <SafeAreaProvider>
+        <StatusBar backgroundStyle={CommonColor.lightBackgroundWhite} barStyle={'dark-content'} />
+        <NativeBaseProvider style={{ flex: 1, flexGrow: 1, height: '100%' }}>
+          <Container style={{ flex: 1, flexGrow: 1, height: '100%' }}>
+            <SafeAreaView style={{
+              flex: 1,
+              flexGrow: 1,
+              height: '100%',
+            }}>
+              <Provider store={this.store.store}>
+                <PersistGate persistor={this.store.persistor}>
+              {console.log(<Navigator/>)}
+                  <Navigator />
+                </PersistGate>
+              </Provider>
+            </SafeAreaView>
+          </Container>
+        </NativeBaseProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+}
 
 export default App;
